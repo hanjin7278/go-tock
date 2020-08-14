@@ -2,6 +2,7 @@ package gnet
 
 import (
 	"errors"
+	"github.com/hanjin7278/go-tock/utils"
 	"log"
 	"net"
 	"github.com/hanjin7278/go-tock/giface"
@@ -45,7 +46,7 @@ func (this *Connection) StartReader(){
 	defer log.Println("ConnId=",this.ConnId," 正在关闭连接")
 	defer this.Stop()
 	for{
-		buf := make([]byte,512)
+		buf := make([]byte,utils.GlobalConfigObj.MaxPackageSize)
 		_, err := this.Conn.Read(buf)
 		if err != nil {
 			log.Fatal("读取错误 ConnId = ",this.ConnId,err)

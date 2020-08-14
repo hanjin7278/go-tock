@@ -3,6 +3,7 @@ package gnet
 import (
 	"fmt"
 	"github.com/hanjin7278/go-tock/giface"
+	"github.com/hanjin7278/go-tock/utils"
 	"log"
 	"net"
 )
@@ -37,7 +38,7 @@ func (this *Server) Start(){
 			log.Fatal("listenner Tcp err",err)
 			return
 		}
-		log.Printf("Start zink is Success , Server Name is%s",this.Name)
+		log.Printf("Start go-tock is Success , Server Name is%s",this.Name)
 
 		var cid uint32 = 0
 		//等待客户端连接
@@ -77,12 +78,12 @@ func (this *Server) AddRouter(router giface.IRouter){
 /**
 	创建Server，返回Server的实例
  */
-func NewServer(serverName string) *Server{
+func NewServer() *Server{
 	s := &Server{
-		Name: serverName,
+		Name: utils.GlobalConfigObj.ServerName,
 		IPVersion: "tcp4",
-		IP: "0.0.0.0",
-		Port: 8888,
+		IP: utils.GlobalConfigObj.Host,
+		Port: utils.GlobalConfigObj.Port,
 		Router:nil,
 	}
 	return s

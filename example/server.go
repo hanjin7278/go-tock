@@ -28,7 +28,7 @@ func (this *MyRouter) AfterHandle(request giface.IRequest){
 
 
 func main(){
-	server := gnet.NewServer("123")
+	server := gnet.NewServer()
 	r := MyRouter{}
 	server.AddRouter(&r)
 	server.Run()
