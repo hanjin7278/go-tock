@@ -2,11 +2,12 @@ package gnet
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net"
 
 	"github.com/hanjin7278/go-tock/giface"
-	"github.com/hanjin7278/go-tock/utils"
 )
 
 /**
@@ -40,27 +41,46 @@ func NewConnection(conn *net.TCPConn, connId uint32, router giface.IRouter) *Con
 }
 
 func (this *Connection) StartReader() {
-	log.Println("ConnId = ", this.ConnId, " 开始读取数据")
+	log.Println("ConnId = ", this.ConnId, "Connection:开始读取数据")
 	defer log.Println("ConnId=", this.ConnId, " 正在关闭连接")
 	defer this.Stop()
 	for {
-		buf := make([]byte, utils.GlobalConfigObj.MaxPackageSize)
-		_, err := this.Conn.Read(buf)
+		dp := NewDataPack()
+		headBuf := make([]byte, dp.GetHeadLen())
+		_, err := io.ReadFull(this.Conn, headBuf)
 		if err != nil {
-			log.Fatal("读取错误 ConnId = ", this.ConnId, err)
-			continue
+			fmt.Println("server reader header err", err)
+			break
 		}
-
-		r := Request{
-			conn: this,
-			data: buf,
+		//读取 len 和 id字段
+		msg, err := dp.Unpack(headBuf)
+		if err != nil {
+			fmt.Println("server msg err", err)
+			break
 		}
-		//调用用户自定义的Handle
-		go func(req giface.IRequest) {
-			this.Router.BeforeHandle(req)
-			this.Router.Handle(req)
-			this.Router.AfterHandle(req)
-		}(&r)
+		//判断是否读取到了内容
+		var data []byte
+		if msg.GetMessageLen() > 0 {
+			//读取data中的内容 返回一个message的指针，使用断言返回Message对象
+			data = make([]byte, msg.GetMessageLen())
+			_, err := io.ReadFull(this.Conn, data)
+			if err != nil {
+				fmt.Println("server read data err ", err)
+				break
+			}
+			//将数据设置到Message对象的data属性中
+			msg.SetMsgData(data)
+			r := Request{
+				conn: this,
+				msg:  msg,
+			}
+			//调用用户自定义的Handle
+			go func(req giface.IRequest) {
+				this.Router.BeforeHandle(req)
+				this.Router.Handle(req)
+				this.Router.AfterHandle(req)
+			}(&r)
+		}
 	}
 }
 
@@ -99,8 +119,18 @@ func (this *Connection) RemoteAddr() net.Addr {
 }
 
 //发送数据
-func (this *Connection) Send(data []byte) error {
-	if _, err := this.Conn.Write(data); err != nil {
+func (this *Connection) SendMsg(msgId uint32, data []byte) error {
+	if this.IsClose == true {
+		log.Fatal("Connection is Closed ")
+		return errors.New("Connection is Closed")
+	}
+	dp := NewDataPack()
+	binMsg, err := dp.Pack(NewMessage(msgId, data))
+	if err != nil {
+		log.Fatal("Server Pack error", err)
+	}
+	//将数据发送到客户端
+	if _, err := this.Conn.Write(binMsg); err != nil {
 		log.Printf("发送客户端数据出现错误", err)
 		return errors.New("发送客户端数据出现错误")
 	}

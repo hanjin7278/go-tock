@@ -20,9 +20,8 @@ type IConnection interface {
 	RemoteAddr() net.Addr
 
 	//发送数据
-	Send([]byte) error
-
+	SendMsg(msgId uint32, data []byte) error
 }
 
 //定义处理链接业务的方法
-type HandleFunc func(*net.TCPConn,[]byte,int) error
+type HandleFunc func(*net.TCPConn, []byte, int) error

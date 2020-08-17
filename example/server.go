@@ -4,30 +4,23 @@ import (
 	"fmt"
 	"github.com/hanjin7278/go-tock/giface"
 	"github.com/hanjin7278/go-tock/gnet"
+	"log"
 )
 
 type MyRouter struct {
 	gnet.BaseRouter
 }
 
-//执行之前
-func (this *MyRouter) BeforeHandle(request giface.IRequest){
-	fmt.Println("Server 执行之前 BeforeHandle")
-	request.GetConnection().Send([]byte("Before Ping ....\n"))
-}
 //执行主handle
-func (this *MyRouter) Handle(request giface.IRequest){
-	fmt.Println("Server 执行 Handle")
-	request.GetConnection().Send([]byte("Handle Ping ....\n"))
-}
-//执行之后
-func (this *MyRouter) AfterHandle(request giface.IRequest){
-	fmt.Println("Server 执行之后 AfterHandle")
-	request.GetConnection().Send([]byte("AfterHandle Ping ....\n"))
+func (this *MyRouter) Handle(request giface.IRequest) {
+	fmt.Printf("Server revc client msgId = %d,data = %s\n", request.GetMsgId(), string(request.GetData()))
+	err := request.GetConnection().SendMsg(1, []byte("ping....ping...ping"))
+	if err != nil {
+		log.Fatal("send data to client err", err)
+	}
 }
 
-
-func main(){
+func main() {
 	server := gnet.NewServer()
 	r := MyRouter{}
 	server.AddRouter(&r)

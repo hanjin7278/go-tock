@@ -9,15 +9,20 @@ type Request struct {
 	//当前链接
 	conn giface.IConnection
 	//请求的数据
-	data []byte
-
+	msg giface.IMessage
 }
 
 //返回当前链接
-func (this *Request) GetConnection() giface.IConnection{
+func (this *Request) GetConnection() giface.IConnection {
 	return this.conn
 }
+
 //获取数据
-func (this *Request) GetData() []byte{
-	return this.data
+func (this *Request) GetData() []byte {
+	return this.msg.GetMsgData()
+}
+
+//获取消息Id
+func (this *Request) GetMsgId() uint32 {
+	return this.msg.GetMessageId()
 }
