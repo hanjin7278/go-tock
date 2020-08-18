@@ -47,5 +47,5 @@ func init() {
 		Version:        "V0.1",
 	}
 	//刷新配置文件信息
-	//GlobalConfigObj.Reload()
+	GlobalConfigObj.Reload()
 }

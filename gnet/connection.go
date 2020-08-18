@@ -23,26 +23,26 @@ type Connection struct {
 	//是否退出
 	ExitChan chan bool
 	//增加路由成员
-	Router giface.IRouter
+	MsgHandle giface.IMsgHandler
 }
 
 /**
 初始化连接的方法
 */
-func NewConnection(conn *net.TCPConn, connId uint32, router giface.IRouter) *Connection {
+func NewConnection(conn *net.TCPConn, connId uint32, handle giface.IMsgHandler) *Connection {
 	c := &Connection{
-		Conn:     conn,
-		ConnId:   connId,
-		IsClose:  false,
-		Router:   router,
-		ExitChan: make(chan bool, 1),
+		Conn:      conn,
+		ConnId:    connId,
+		IsClose:   false,
+		MsgHandle: handle,
+		ExitChan:  make(chan bool, 1),
 	}
 	return c
 }
 
 func (this *Connection) StartReader() {
-	log.Println("ConnId = ", this.ConnId, "Connection:开始读取数据")
-	defer log.Println("ConnId=", this.ConnId, " 正在关闭连接")
+	log.Println("ConnId = ", this.ConnId, "Connection:start read data")
+	defer log.Println("ConnId=", this.ConnId, " close connection")
 	defer this.Stop()
 	for {
 		dp := NewDataPack()
@@ -75,11 +75,7 @@ func (this *Connection) StartReader() {
 				msg:  msg,
 			}
 			//调用用户自定义的Handle
-			go func(req giface.IRequest) {
-				this.Router.BeforeHandle(req)
-				this.Router.Handle(req)
-				this.Router.AfterHandle(req)
-			}(&r)
+			go this.MsgHandle.DoMsgHandler(&r)
 		}
 	}
 }
@@ -91,7 +87,7 @@ func (this *Connection) Start() {
 
 //停止连接
 func (this *Connection) Stop() {
-	log.Println("正在关闭连接 ConnId = ", this.ConnId)
+	log.Println("close connection ConnId = ", this.ConnId)
 	if this.IsClose {
 		return
 	}
@@ -100,7 +96,7 @@ func (this *Connection) Stop() {
 	this.Conn.Close()
 	//关闭管道
 	close(this.ExitChan)
-	log.Println("连接ConnId = ", this.ConnId, "已经关闭")
+	log.Println("ConnId = ", this.ConnId, " closed")
 }
 
 //获取当前连接绑定的Socket
@@ -131,8 +127,8 @@ func (this *Connection) SendMsg(msgId uint32, data []byte) error {
 	}
 	//将数据发送到客户端
 	if _, err := this.Conn.Write(binMsg); err != nil {
-		log.Printf("发送客户端数据出现错误", err)
-		return errors.New("发送客户端数据出现错误")
+		log.Printf("send to client err", err)
+		return errors.New("send to client err")
 	}
 	return nil
 }

@@ -13,5 +13,5 @@ type IServer interface {
 	Run()
 
 	//增加Router
-	AddRouter(router IRouter)
+	AddRouter(msgId uint32, router IRouter)
 }

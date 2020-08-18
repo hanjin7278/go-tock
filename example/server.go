@@ -14,15 +14,19 @@ type MyRouter struct {
 //执行主handle
 func (this *MyRouter) Handle(request giface.IRequest) {
 	fmt.Printf("Server revc client msgId = %d,data = %s\n", request.GetMsgId(), string(request.GetData()))
-	err := request.GetConnection().SendMsg(1, []byte("ping....ping...ping"))
-	if err != nil {
-		log.Fatal("send data to client err", err)
+	//消息Id是0的
+	if request.GetMsgId() == 0 {
+		err := request.GetConnection().SendMsg(1, []byte("ping....ping...ping"))
+		if err != nil {
+			log.Fatal("send data to client err", err)
+		}
 	}
+
 }
 
 func main() {
 	server := gnet.NewServer()
 	r := MyRouter{}
-	server.AddRouter(&r)
+	server.AddRouter(0, &r)
 	server.Run()
 }
