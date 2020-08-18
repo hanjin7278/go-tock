@@ -24,7 +24,7 @@ type Server struct {
 }
 
 //实现IServer的Start方法
-func (this *Server) Start() {
+func (this *Server) start() {
 	go func() {
 		this.MsgHandle.StartWorkerPool()
 		time.Sleep(10 * time.Millisecond)
@@ -68,7 +68,7 @@ func (this *Server) Stop() {
 
 //实现IServer的Run方法
 func (this *Server) Run() {
-	this.Start()
+	this.start()
 	//TODO 以后可以处理其它的业务
 
 	//阻塞
