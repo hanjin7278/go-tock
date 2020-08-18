@@ -4,5 +4,7 @@
   "Port": 8888,
   "MaxConn": 10,
   "MaxPackageSize": 4096,
-  "Version": "V0.1"
+  "Version": "V0.1",
+  "WorkerPoolSize" : 10,
+  "MaxWorkerTaskLen": 1024
 }

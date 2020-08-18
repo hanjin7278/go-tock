@@ -19,11 +19,17 @@ func main() {
 		log.Fatal("创建tcp客户端连接错误", err)
 	}
 
-	for {
+	go doSend(conn, 0, "我是消息Id=0发送的数据")
+	go doSend(conn, 1, "我是消息Id=1发送的数据")
+	//阻塞线程
+	select {}
+}
 
+func doSend(conn net.Conn, msgId uint32, content string) {
+	for {
 		dp := gnet.NewDataPack()
 
-		msg := gnet.NewMessage(0, []byte("我是客户端发送的数据"))
+		msg := gnet.NewMessage(msgId, []byte(content))
 
 		binMsg, err := dp.Pack(msg)
 		if err != nil {

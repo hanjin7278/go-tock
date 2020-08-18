@@ -20,6 +20,10 @@ type GlobalConfig struct {
 	MaxPackageSize uint32 //客户端一次请求包的最大值
 
 	Version string //go-tock 版本号
+
+	WorkerPoolSize uint32 //工作池大小
+
+	MaxWorkerTaskLen uint32 //任务队列中最大多少
 }
 
 var GlobalConfigObj *GlobalConfig
@@ -39,12 +43,14 @@ func (g *GlobalConfig) Reload() {
 */
 func init() {
 	GlobalConfigObj = &GlobalConfig{
-		ServerName:     "go-tock-server",
-		Host:           "0.0.0.0",
-		Port:           8888,
-		MaxConn:        2000,
-		MaxPackageSize: 4096,
-		Version:        "V0.1",
+		ServerName:       "go-tock-server",
+		Host:             "0.0.0.0",
+		Port:             8888,
+		MaxConn:          2000,
+		MaxPackageSize:   4096,
+		Version:          "V0.1",
+		WorkerPoolSize:   10,
+		MaxWorkerTaskLen: 1024,
 	}
 	//刷新配置文件信息
 	GlobalConfigObj.Reload()

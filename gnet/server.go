@@ -6,6 +6,7 @@ import (
 	"github.com/hanjin7278/go-tock/utils"
 	"log"
 	"net"
+	"time"
 )
 
 //定义IServer接口的实现
@@ -25,6 +26,10 @@ type Server struct {
 //实现IServer的Start方法
 func (this *Server) Start() {
 	go func() {
+		this.MsgHandle.StartWorkerPool()
+		time.Sleep(10 * time.Millisecond)
+		log.Println("[Start WorkerPool Success]")
+
 		log.Printf("[Start] Server Listenner at IP: %s Port:%d", this.IP, this.Port)
 
 		addr, err := net.ResolveTCPAddr(this.IPVersion, fmt.Sprintf("%s:%d", this.IP, this.Port))

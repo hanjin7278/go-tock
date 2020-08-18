@@ -3,6 +3,7 @@ package gnet
 import (
 	"errors"
 	"fmt"
+	"github.com/hanjin7278/go-tock/utils"
 	"io"
 	"log"
 	"net"
@@ -22,6 +23,10 @@ type Connection struct {
 	IsClose bool
 	//是否退出
 	ExitChan chan bool
+
+	//用于reader、writer 之间通信的管道
+	MsgChan chan []byte
+
 	//增加路由成员
 	MsgHandle giface.IMsgHandler
 }
@@ -34,15 +39,19 @@ func NewConnection(conn *net.TCPConn, connId uint32, handle giface.IMsgHandler) 
 		Conn:      conn,
 		ConnId:    connId,
 		IsClose:   false,
+		MsgChan:   make(chan []byte),
 		MsgHandle: handle,
 		ExitChan:  make(chan bool, 1),
 	}
 	return c
 }
 
+/**
+启动读的协程
+*/
 func (this *Connection) StartReader() {
-	log.Println("ConnId = ", this.ConnId, "Connection:start read data")
-	defer log.Println("ConnId=", this.ConnId, " close connection")
+	log.Println("[Connection:start read data running] connId = ", this.ConnId)
+	defer log.Println("[Reader close connection,Exit!!!]Conn=", this.Conn.RemoteAddr().String())
 	defer this.Stop()
 	for {
 		dp := NewDataPack()
@@ -75,7 +84,36 @@ func (this *Connection) StartReader() {
 				msg:  msg,
 			}
 			//调用用户自定义的Handle
-			go this.MsgHandle.DoMsgHandler(&r)
+			if utils.GlobalConfigObj.WorkerPoolSize > 0 {
+				//已经开启工作池，交给工作池处理
+				this.MsgHandle.SendMsgToTaskQueue(&r)
+			} else {
+				//还用原始的处理
+				go this.MsgHandle.DoMsgHandler(&r)
+			}
+
+		}
+	}
+}
+
+/**
+用于回写到客户端的goroutine
+*/
+func (this *Connection) StartWriter() {
+	log.Println("[Connection:start writer data running] connId = ", this.ConnId)
+	defer log.Println("[Writer closed connection,Exit!!!] conn=", this.Conn.RemoteAddr().String())
+
+	//不断监听管道里的内容
+	for {
+		select {
+		case data := <-this.MsgChan:
+			//从管道中读取到了数据
+			if _, err := this.Conn.Write(data); err != nil {
+				log.Fatal("writer to client err", err)
+			}
+		case <-this.ExitChan:
+			//读取到了退出消息
+			return
 		}
 	}
 }
@@ -83,19 +121,23 @@ func (this *Connection) StartReader() {
 //启动连接
 func (this *Connection) Start() {
 	go this.StartReader()
+	go this.StartWriter()
 }
 
 //停止连接
 func (this *Connection) Stop() {
-	log.Println("close connection ConnId = ", this.ConnId)
+	log.Println("[stop connection exit!!! ] connId=", this.ConnId)
 	if this.IsClose {
 		return
 	}
 	this.IsClose = true
 	//关闭Socket连接
 	this.Conn.Close()
+	//通知Writer关闭
+	this.ExitChan <- true
 	//关闭管道
 	close(this.ExitChan)
+	close(this.MsgChan)
 	log.Println("ConnId = ", this.ConnId, " closed")
 }
 
@@ -125,10 +167,8 @@ func (this *Connection) SendMsg(msgId uint32, data []byte) error {
 	if err != nil {
 		log.Fatal("Server Pack error", err)
 	}
-	//将数据发送到客户端
-	if _, err := this.Conn.Write(binMsg); err != nil {
-		log.Printf("send to client err", err)
-		return errors.New("send to client err")
-	}
+	//将数据发送到写的管道
+	this.MsgChan <- binMsg
+
 	return nil
 }
