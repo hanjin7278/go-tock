@@ -38,5 +38,15 @@ func main() {
 	//添加多个自定义路由
 	server.AddRouter(0, &MyRouter{})
 	server.AddRouter(1, &TowRouter{})
+
+	//添加hook函数注册
+	server.SetOnConnStart(func(conn giface.IConnection) {
+		log.Println("---> Server OnConnStart 方法触发")
+	})
+
+	server.SetOnConnStop(func(conn giface.IConnection) {
+		log.Println("---> Server OnConnStop 方法触发")
+	})
+
 	server.Run()
 }

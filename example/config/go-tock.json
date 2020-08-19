@@ -2,7 +2,7 @@
   "ServerName": "Go-Tock Server App",
   "Host": "0.0.0.0",
   "Port": 8888,
-  "MaxConn": 10,
+  "MaxConn": 2,
   "MaxPackageSize": 4096,
   "Version": "V0.1",
   "WorkerPoolSize" : 10,

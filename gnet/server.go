@@ -21,6 +21,12 @@ type Server struct {
 	Port int
 	//增加路由成员
 	MsgHandle giface.IMsgHandler
+	//增加连接管理器
+	ConnMgr giface.IConnManager
+	//连接创建后调用的方法
+	OnConnStart func(giface.IConnection)
+	//连接销毁之前调用的方法
+	OnConnStop func(giface.IConnection)
 }
 
 //实现IServer的Start方法
@@ -30,7 +36,7 @@ func (this *Server) start() {
 		time.Sleep(10 * time.Millisecond)
 		log.Println("[Start WorkerPool Success]")
 
-		log.Printf("[Start] Server Listenner at IP: %s Port:%d", this.IP, this.Port)
+		log.Printf("[Start] Server Listenner at IP: %s Port:%d MaxConnection: %d\n", this.IP, this.Port, utils.GlobalConfigObj.MaxConn)
 
 		addr, err := net.ResolveTCPAddr(this.IPVersion, fmt.Sprintf("%s:%d", this.IP, this.Port))
 		if err != nil {
@@ -53,17 +59,33 @@ func (this *Server) start() {
 				log.Fatal("accept err", err)
 				continue
 			}
+
+			//创建连接的时候判断当前连接数是否大于用于配置的数量
+			if this.ConnMgr.GetConnSize() >= utils.GlobalConfigObj.MaxConn {
+				//TODO 以后加入提示关闭连接的错误信息返回
+				log.Println("[too many Connection max connection num is ", utils.GlobalConfigObj.MaxConn, "]")
+				acceptTCP.Close()
+				continue
+			}
+
 			//调用Connection模块读取数据
-			c := NewConnection(acceptTCP, cid, this.MsgHandle)
+			c := NewConnection(this, acceptTCP, cid, this.MsgHandle)
 			cid++
 			go c.Start()
 		}
 	}()
 }
 
+//获取当前连接管理器
+func (this *Server) GetConnMgr() giface.IConnManager {
+	return this.ConnMgr
+}
+
 //实现IServer的Stop方法
 func (this *Server) Stop() {
-
+	//清理连接，回收资源
+	this.ConnMgr.Clear()
+	log.Println("[Server ", this.Name, " Stop Success!]")
 }
 
 //实现IServer的Run方法
@@ -90,6 +112,33 @@ func NewServer() *Server {
 		IP:        utils.GlobalConfigObj.Host,
 		Port:      utils.GlobalConfigObj.Port,
 		MsgHandle: NewMsgHandler(),
+		ConnMgr:   NewConnManager(),
 	}
 	return s
+}
+
+//注册OnConnStart()方法
+func (this *Server) SetOnConnStart(hookFun func(conn giface.IConnection)) {
+	this.OnConnStart = hookFun
+}
+
+//注册OnConnStop()方法
+func (this *Server) SetOnConnStop(hookFun func(conn giface.IConnection)) {
+	this.OnConnStop = hookFun
+}
+
+//调用OnConnStart()方法
+func (this *Server) CallOnConnStart(conn giface.IConnection) {
+	if this.OnConnStart != nil {
+		log.Println("====>[CallOnConnStart() .....]")
+		this.OnConnStart(conn)
+	}
+}
+
+//调用OnConnStop()方法
+func (this *Server) CallOnConnStop(conn giface.IConnection) {
+	if this.OnConnStop != nil {
+		log.Println("====>[CallOnConnStop() .....]")
+		this.OnConnStop(conn)
+	}
 }

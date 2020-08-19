@@ -15,6 +15,9 @@ import (
 定义链接对象内容
 */
 type Connection struct {
+
+	//保存当前连接对应的Server对象
+	TcpServer giface.IServer
 	//当前的链接
 	Conn *net.TCPConn
 	//链接id
@@ -34,8 +37,9 @@ type Connection struct {
 /**
 初始化连接的方法
 */
-func NewConnection(conn *net.TCPConn, connId uint32, handle giface.IMsgHandler) *Connection {
+func NewConnection(server giface.IServer, conn *net.TCPConn, connId uint32, handle giface.IMsgHandler) *Connection {
 	c := &Connection{
+		TcpServer: server,
 		Conn:      conn,
 		ConnId:    connId,
 		IsClose:   false,
@@ -43,6 +47,9 @@ func NewConnection(conn *net.TCPConn, connId uint32, handle giface.IMsgHandler) 
 		MsgHandle: handle,
 		ExitChan:  make(chan bool, 1),
 	}
+	//将当前连接加入到连接管理器中
+	server.GetConnMgr().Add(c)
+
 	return c
 }
 
@@ -122,6 +129,9 @@ func (this *Connection) StartWriter() {
 func (this *Connection) Start() {
 	go this.StartReader()
 	go this.StartWriter()
+
+	//调用开发者定义的OnConnStart()
+	this.TcpServer.CallOnConnStart(this)
 }
 
 //停止连接
@@ -131,6 +141,10 @@ func (this *Connection) Stop() {
 		return
 	}
 	this.IsClose = true
+
+	//在连接关闭之前调用开发者定义的OnConnStop()方法
+	this.TcpServer.CallOnConnStop(this)
+
 	//关闭Socket连接
 	this.Conn.Close()
 	//通知Writer关闭
@@ -138,6 +152,9 @@ func (this *Connection) Stop() {
 	//关闭管道
 	close(this.ExitChan)
 	close(this.MsgChan)
+	//从连接管理器中移除当前连接
+	this.TcpServer.GetConnMgr().Remove(this)
+
 	log.Println("ConnId = ", this.ConnId, " closed")
 }
 

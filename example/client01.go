@@ -19,7 +19,7 @@ func main() {
 		log.Fatal("创建tcp客户端连接错误", err)
 	}
 
-	go doSend(conn, 0, "我是消息Id=0发送的数据")
+	go doSend(conn, 1, "我是消息Id=1发送的数据")
 	//阻塞线程
 	select {}
 }
