@@ -42,10 +42,15 @@ func main() {
 	//添加hook函数注册
 	server.SetOnConnStart(func(conn giface.IConnection) {
 		log.Println("---> Server OnConnStart 方法触发")
+		log.Println("---> 设置连接属性")
+		conn.SetProp("name", "张三")
 	})
 
 	server.SetOnConnStop(func(conn giface.IConnection) {
 		log.Println("---> Server OnConnStop 方法触发")
+		prop, _ := conn.GetProp("name")
+		fmt.Println("--->获取连接属性")
+		fmt.Println("prop =", prop)
 	})
 
 	server.Run()

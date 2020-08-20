@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sync"
 
 	"github.com/hanjin7278/go-tock/giface"
 )
@@ -32,6 +33,11 @@ type Connection struct {
 
 	//增加路由成员
 	MsgHandle giface.IMsgHandler
+
+	//用于存放连接属性的集合
+	ConnProp map[string]interface{}
+	//用于保护属性的锁
+	PropLock sync.RWMutex
 }
 
 /**
@@ -46,6 +52,7 @@ func NewConnection(server giface.IServer, conn *net.TCPConn, connId uint32, hand
 		MsgChan:   make(chan []byte),
 		MsgHandle: handle,
 		ExitChan:  make(chan bool, 1),
+		ConnProp:  make(map[string]interface{}),
 	}
 	//将当前连接加入到连接管理器中
 	server.GetConnMgr().Add(c)
@@ -188,4 +195,45 @@ func (this *Connection) SendMsg(msgId uint32, data []byte) error {
 	this.MsgChan <- binMsg
 
 	return nil
+}
+
+//保存属性
+func (this *Connection) SetProp(key string, value interface{}) {
+	this.PropLock.Lock()
+	defer this.PropLock.Unlock()
+	this.ConnProp[key] = value
+}
+
+//删除属性
+func (this *Connection) RemoveProp(key string) {
+	this.PropLock.Lock()
+	defer this.PropLock.Unlock()
+	if _, ok := this.ConnProp[key]; ok {
+		delete(this.ConnProp, key)
+	} else {
+		log.Println("[remove by key ", key, " not in Props]")
+	}
+}
+
+//获取属性
+func (this *Connection) GetProp(key string) (interface{}, error) {
+	this.PropLock.RLock()
+	defer this.PropLock.RUnlock()
+	if _, ok := this.ConnProp[key]; ok {
+		return this.ConnProp[key], nil
+	} else {
+		log.Println("[remove by key ", key, " not in Props]")
+		return nil, errors.New("[get by key not in Props]")
+	}
+}
+
+//清空属性
+func (this *Connection) ClearProp() {
+	this.PropLock.Lock()
+	defer this.PropLock.Unlock()
+
+	for k, _ := range this.ConnProp {
+		delete(this.ConnProp, k)
+	}
+	log.Println("[Clear All Properties Success]")
 }
